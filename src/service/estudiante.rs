@@ -14,7 +14,7 @@ pub fn service(cfg: &mut ServiceConfig) {
         web::scope(PATH)
             .app_data(PathConfig::default().error_handler(path_config_handler))
             // GET
-            //.route("/{id}", web::get().to(get))
+            .route("/{id}", web::get().to(get))
             //GET ALL
             .route("/", web::get().to(get_all))
             // POST
@@ -22,21 +22,21 @@ pub fn service(cfg: &mut ServiceConfig) {
             // PUT
             .route("/", web::put().to(put))
             // DELETE
-            //.route("/{id}", web::delete().to(delete)),
+            .route("/{id}", web::delete().to(delete))
     );
 }
 
-async fn get (id: u64, repo: web::Data<EstudianteRepository>) -> HttpResponse {
-    match repo.get(id).await {
+async fn get (id: web::Path<u64>, repo: web::Data<EstudianteRepository>) -> HttpResponse { //req: HttpRequest
+    match repo.get(&id).await {
         Ok(estudiante) => HttpResponse::Ok().json(estudiante),
-        Err(_) => HttpResponse::NotFound().body("Not found"),
+        Err(e) => HttpResponse::NotFound().body(e.to_string()),
     }
 }
 
 async fn get_all (repo: web::Data<EstudianteRepository>) -> HttpResponse {
     match repo.get_all().await {
         Ok(estudiantes) => HttpResponse::Ok().json(estudiantes),
-        Err(_) => HttpResponse::NotFound().body("Not found"),
+        Err(e) => HttpResponse::NotFound().body(e.to_string()),
     }
 }
 
@@ -56,9 +56,9 @@ async fn put (estudiante: web::Json<Estudiante>, repo: web::Data<EstudianteRepos
 }
 
 
-async fn delete (id: u64, repo: web::Data<EstudianteRepository>) -> HttpResponse {
-    match repo.delete(id).await {
-        Ok(estudiante) => HttpResponse::Ok().json(estudiante),
+async fn delete (id: web::Path<u64>, repo: web::Data<EstudianteRepository>) -> HttpResponse {
+    match repo.delete(*id).await {
+        Ok(estudiante) => HttpResponse::Ok().body(format!("Estudiante of ID:{} deleted", estudiante)),
         Err(e) => HttpResponse::InternalServerError().body(format!("Something went wrong: {}", e)),
     }
 }

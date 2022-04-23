@@ -22,7 +22,7 @@ impl EstudianteRepository {
 impl Crud<Estudiante> for EstudianteRepository {
  
 	async fn create(&self, data: &Estudiante) -> Result<Estudiante, repository::RepositoryError> {
-		let result = sqlx::query_as::<_, Estudiante>(
+        match sqlx::query(
             r#"
         INSERT INTO estudiante (id, nombre, telefono, fecha_nacimiento)
         VALUES (?, ?, ?, ?)"#,
@@ -31,15 +31,14 @@ impl Crud<Estudiante> for EstudianteRepository {
         .bind(&data.nombre)
         .bind(&data.telefono)
         .bind(&data.fecha_nacimiento)
-        .fetch_one(&self.pool)
-        .await;
-
-		result.map_err(|_e|{
-            RepositoryError::AlreadyExists
-        })
+        .execute(&self.pool)
+        .await{
+            Ok(_) => Ok(data.clone()),
+            Err(_) => Err(RepositoryError::AlreadyExists)
+        }
 	}
 
-	async fn get(&self, id: u64) -> Result<Estudiante, repository::RepositoryError> {
+	async fn get(&self, id: &u64) -> Result<Estudiante, repository::RepositoryError> {
 		let result = sqlx::query_as::<_, Estudiante>(
             "SELECT id, nombre, telefono, fecha_nacimiento 
             FROM estudiante
@@ -48,12 +47,26 @@ impl Crud<Estudiante> for EstudianteRepository {
         .bind(id)
         .fetch_one(&self.pool)
         .await;
-
-        handle_fetch_one_result(result, Self::TABLE, id)
+        
+        handle_fetch_one_result(result, Self::TABLE, &id)
 	}
 
 	async fn update(&self, data: &Estudiante) -> Result<Estudiante, repository::RepositoryError> {
-		let result = sqlx::query_as::<_, Estudiante>(
+		// let result = sqlx::query_as::<_, Estudiante>(
+        //     r#"
+        //     UPDATE estudiante
+        //     SET nombre = ?, telefono = ?, fecha_nacimiento = ?
+        //     WHERE id = ?
+        //     "#,
+        // )
+        // .bind(&data.nombre)
+        // .bind(&data.telefono)
+        // .bind(&data.fecha_nacimiento)
+        // .bind(&data.id)
+        // .fetch_one(&self.pool)
+        // .await;
+
+        match sqlx::query(
             r#"
             UPDATE estudiante
             SET nombre = ?, telefono = ?, fecha_nacimiento = ?
@@ -64,10 +77,13 @@ impl Crud<Estudiante> for EstudianteRepository {
         .bind(&data.telefono)
         .bind(&data.fecha_nacimiento)
         .bind(&data.id)
-        .fetch_one(&self.pool)
-        .await;
+        .execute(&self.pool)
+        .await{
+            Ok(_) => Ok(data.clone()),
+            Err(_) => Err(RepositoryError::AlreadyExists)
+        }
 
-		handle_fetch_one_result(result, Self::TABLE, data.id)
+		//handle_fetch_one_result(result, Self::TABLE, &data.id)
 	}
 
 	async fn get_all(&self) -> Result<Vec<Estudiante>, repository::RepositoryError> {
@@ -83,24 +99,37 @@ impl Crud<Estudiante> for EstudianteRepository {
         })
 	}
 
-	async fn delete(&self, id: u64) -> Result<Estudiante, repository::RepositoryError> {
-		let result = sqlx::query_as::<_, Estudiante>(
+	async fn delete(&self, id: u64) -> Result<u64, repository::RepositoryError> {
+		// let result = sqlx::query_as::<_, Estudiante>(
+        //     r#"
+        //     DELETE FROM estudiante
+        //     WHERE id = ?
+        // "#,
+        // )
+        // .bind(id)
+        // .fetch_one(&self.pool)
+        // .await;
+
+        //println!("{:?}", result);
+        match sqlx::query(
             r#"
             DELETE FROM estudiante
             WHERE id = ?
         "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
-        .await;
-
-		handle_fetch_one_result(result, Self::TABLE, id)
+        .execute(&self.pool)
+        .await{
+            Ok(_) => Ok(id),
+            Err(_) => Err(RepositoryError::AlreadyExists)
+        }
+		//handle_fetch_one_result(result, Self::TABLE, &id)
 	}
 }
 // endregion: EstudianteRepository
 
 // region:    Utils
-fn handle_fetch_one_result(result: Result<Estudiante, sqlx::Error>, typ: &'static str, id: u64,) -> Result<Estudiante, repository::RepositoryError> {
+fn handle_fetch_one_result(result: Result<Estudiante, sqlx::Error>, typ: &'static str, id: &u64,) -> Result<Estudiante, repository::RepositoryError> {
 	result.map_err(|sqlx_error| match sqlx_error {
 		sqlx::Error::RowNotFound => repository::RepositoryError::EntityNotFound(typ, id.to_string()),
 		other => repository::RepositoryError::SqlxError(other),

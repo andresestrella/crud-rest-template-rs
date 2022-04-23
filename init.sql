@@ -1,7 +1,7 @@
 drop table if exists estudiante;
 
 create table estudiante (
-    id int primary key,
+    id BIGINT UNSIGNED primary key,
     nombre varchar(150),
     telefono varchar(12),
     fecha_nacimiento varchar(10)
